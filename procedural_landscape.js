@@ -153,6 +153,33 @@ function draw_tree_shadow(startx, starty, length, sun_dir, local_ctx){
 
 }
 
+function mod(n, m) {
+  return ((n % m) + m) % m;
+}
+
+function distorted_lineto(pos_from, pos_to, ctx){
+
+   var dist_factor = 4;
+
+   var nb_jumps = 20
+   for (var i = 1; i <= nb_jumps; i++) {
+      var line_progression = i/nb_jumps;
+      var posx = (1-line_progression)*pos_from[0]+line_progression*pos_to[0];
+      var posy = (1-line_progression)*pos_from[1]+line_progression*pos_to[1];
+
+      //calls a global array contaning noise values
+      var distortion_val = noise_values_distortion[mod(Math.floor(posx), noise_values_distortion.length)][mod(Math.floor(posy),noise_values_distortion[0].length)]
+
+      //don't distort borders ==> creates artifacts o/w
+      if(i != nb_jumps){
+         posx += (distortion_val*2-1)*dist_factor;
+         posy += distortion_val*dist_factor; //only go down to avoid artifacts with snow boundaries
+      }
+      ctx.lineTo(posx, posy);
+   }
+
+}
+
 //angle left should be negative
 //angle ridge can be whatever but should be between left and right
 function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height, max_height, sun_dir, local_ctx){
@@ -194,8 +221,11 @@ function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height,
 
    local_ctx.beginPath();
    local_ctx.moveTo(posx, posy);
-   local_ctx.lineTo(posx+Math.tan(angle_left)*height, posy+height);
-   local_ctx.lineTo(posx+Math.tan(angle_ridge)*height, posy+height);
+   var p1 = [posx+Math.tan(angle_left)*height, posy+height];
+   distorted_lineto([posx, posy], p1, local_ctx);
+   var p2 = [posx+Math.tan(angle_ridge)*height, posy+height];
+   distorted_lineto(p1, p2, local_ctx);
+   distorted_lineto(p2, [posx, posy], local_ctx);
    local_ctx.fill();
 
    var right_middle_angle = (angle_ridge+angle_right)/2
@@ -220,8 +250,11 @@ function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height,
 
    local_ctx.beginPath();
    local_ctx.moveTo(posx, posy);
-   local_ctx.lineTo(posx+Math.tan(angle_ridge)*height, posy+height);
-   local_ctx.lineTo(posx+Math.tan(angle_right)*height, posy+height);
+   var p1 = [posx+Math.tan(angle_ridge)*height, posy+height];
+   distorted_lineto([posx, posy], p1, local_ctx);
+   var p2 = [posx+Math.tan(angle_right)*height, posy+height];
+   distorted_lineto(p1, p2, local_ctx);
+   distorted_lineto(p2, [posx, posy], local_ctx);
    local_ctx.fill();
 
    local_ctx.fillStyle = 'rgba(0,0,0,0)'; //maxe context transparent (create a layer)
@@ -238,8 +271,13 @@ function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height,
 
    local_ctx.beginPath();
    local_ctx.moveTo(posx, posy);
-   local_ctx.lineTo(posx+Math.tan(angle_left)*snow_height, posy+snow_height);
-   local_ctx.lineTo(posx+Math.tan(angle_ridge)*snow_height, posy+snow_height);
+   // local_ctx.lineTo(posx+Math.tan(angle_left)*snow_height, posy+snow_height);
+   // local_ctx.lineTo(posx+Math.tan(angle_ridge)*snow_height, posy+snow_height);
+   var p1 = [posx+Math.tan(angle_left)*snow_height, posy+snow_height];
+   distorted_lineto([posx, posy], p1, local_ctx);
+   var p2 = [posx+Math.tan(angle_ridge)*snow_height, posy+snow_height];
+   distorted_lineto(p1, p2, local_ctx);
+   distorted_lineto(p2, [posx, posy], local_ctx);
    local_ctx.fill();
 
    //////////snowtop right
@@ -254,8 +292,13 @@ function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height,
 
    local_ctx.beginPath();
    local_ctx.moveTo(posx, posy);
-   local_ctx.lineTo(posx+Math.tan(angle_ridge)*snow_height, posy+snow_height);
-   local_ctx.lineTo(posx+Math.tan(angle_right)*snow_height, posy+snow_height);
+   // local_ctx.lineTo(posx+Math.tan(angle_ridge)*snow_height, posy+snow_height);
+   // local_ctx.lineTo(posx+Math.tan(angle_right)*snow_height, posy+snow_height);
+   var p1 = [posx+Math.tan(angle_ridge)*snow_height, posy+snow_height];
+   distorted_lineto([posx, posy], p1, local_ctx);
+   var p2 = [posx+Math.tan(angle_right)*snow_height, posy+snow_height];
+   distorted_lineto(p1, p2, local_ctx);
+   distorted_lineto(p2, [posx, posy], local_ctx);
    local_ctx.fill();
 }
 
@@ -381,6 +424,9 @@ size_canvas = [1600, 900];
 sun_angle = (Math.random()*2-1)*(Math.PI/3)-Math.PI/2; //+- 60 degrees around up vector
 sun_dir = [Math.cos(sun_angle), Math.sin(sun_angle)];
 // sun_dir = [0, -1]; // sun at the top
+
+//use a single global noise function for distortion
+var noise_values_distortion = improved_perlin_noise_recurs(size_canvas[0], size_canvas[1], 10, 1);
 
 //sky
 ctx.strokeStyle = "#50A0FF"; //light blue
