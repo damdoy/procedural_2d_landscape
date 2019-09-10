@@ -11,4 +11,3 @@ it should be done with webgl and shaders.
 
 TODO:
 - lakes with reflexion
-- animation (sun, clouds, leaves/wind) (unlikely due to poor perf)

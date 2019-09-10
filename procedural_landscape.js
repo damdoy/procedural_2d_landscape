@@ -157,9 +157,9 @@ function mod(n, m) {
   return ((n % m) + m) % m;
 }
 
-function distorted_lineto(pos_from, pos_to, ctx){
+function distorted_lineto(pos_from, pos_to, distortion_factor, ctx){
 
-   var dist_factor = 4;
+   // var dist_factor = 4;
 
    var nb_jumps = 20
    for (var i = 1; i <= nb_jumps; i++) {
@@ -172,8 +172,8 @@ function distorted_lineto(pos_from, pos_to, ctx){
 
       //don't distort borders ==> creates artifacts o/w
       if(i != nb_jumps){
-         posx += (distortion_val*2-1)*dist_factor;
-         posy += distortion_val*dist_factor; //only go down to avoid artifacts with snow boundaries
+         posx += (distortion_val*2-1)*distortion_factor;
+         posy += distortion_val*distortion_factor; //only go down to avoid artifacts with snow boundaries
       }
       ctx.lineTo(posx, posy);
    }
@@ -182,12 +182,15 @@ function distorted_lineto(pos_from, pos_to, ctx){
 
 //angle left should be negative
 //angle ridge can be whatever but should be between left and right
-function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height, max_height, sun_dir, local_ctx){
+function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height, max_height, sun_dir, distance, local_ctx){
    local_ctx.strokeStyle = "#000000";
    local_ctx.fillStyle = "#DFDFDF";
 
    //multiplication to simulate crude gaussian
    var random_col_variation = (Math.random()*2-1)*(Math.random()*2-1);
+
+   //the nearer the mountain is, the bigger the distortion
+   var distortion_factor = 4+Math.pow(1-distance, 6)*20;
 
    var grass_red = Math.floor(24+8*random_col_variation)
    var grass_green = Math.floor(140+36*random_col_variation)
@@ -222,10 +225,10 @@ function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height,
    local_ctx.beginPath();
    local_ctx.moveTo(posx, posy);
    var p1 = [posx+Math.tan(angle_left)*height, posy+height];
-   distorted_lineto([posx, posy], p1, local_ctx);
+   distorted_lineto([posx, posy], p1, distortion_factor, local_ctx);
    var p2 = [posx+Math.tan(angle_ridge)*height, posy+height];
-   distorted_lineto(p1, p2, local_ctx);
-   distorted_lineto(p2, [posx, posy], local_ctx);
+   distorted_lineto(p1, p2, distortion_factor, local_ctx);
+   distorted_lineto(p2, [posx, posy], distortion_factor, local_ctx);
    local_ctx.fill();
 
    var right_middle_angle = (angle_ridge+angle_right)/2
@@ -251,10 +254,10 @@ function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height,
    local_ctx.beginPath();
    local_ctx.moveTo(posx, posy);
    var p1 = [posx+Math.tan(angle_ridge)*height, posy+height];
-   distorted_lineto([posx, posy], p1, local_ctx);
+   distorted_lineto([posx, posy], p1, distortion_factor, local_ctx);
    var p2 = [posx+Math.tan(angle_right)*height, posy+height];
-   distorted_lineto(p1, p2, local_ctx);
-   distorted_lineto(p2, [posx, posy], local_ctx);
+   distorted_lineto(p1, p2, distortion_factor, local_ctx);
+   distorted_lineto(p2, [posx, posy], distortion_factor, local_ctx);
    local_ctx.fill();
 
    local_ctx.fillStyle = 'rgba(0,0,0,0)'; //maxe context transparent (create a layer)
@@ -274,10 +277,10 @@ function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height,
    // local_ctx.lineTo(posx+Math.tan(angle_left)*snow_height, posy+snow_height);
    // local_ctx.lineTo(posx+Math.tan(angle_ridge)*snow_height, posy+snow_height);
    var p1 = [posx+Math.tan(angle_left)*snow_height, posy+snow_height];
-   distorted_lineto([posx, posy], p1, local_ctx);
+   distorted_lineto([posx, posy], p1, distortion_factor, local_ctx);
    var p2 = [posx+Math.tan(angle_ridge)*snow_height, posy+snow_height];
-   distorted_lineto(p1, p2, local_ctx);
-   distorted_lineto(p2, [posx, posy], local_ctx);
+   distorted_lineto(p1, p2, distortion_factor, local_ctx);
+   distorted_lineto(p2, [posx, posy], distortion_factor, local_ctx);
    local_ctx.fill();
 
    //////////snowtop right
@@ -295,10 +298,10 @@ function draw_mountain(posx, posy, angle_left, angle_right, angle_ridge, height,
    // local_ctx.lineTo(posx+Math.tan(angle_ridge)*snow_height, posy+snow_height);
    // local_ctx.lineTo(posx+Math.tan(angle_right)*snow_height, posy+snow_height);
    var p1 = [posx+Math.tan(angle_ridge)*snow_height, posy+snow_height];
-   distorted_lineto([posx, posy], p1, local_ctx);
+   distorted_lineto([posx, posy], p1, distortion_factor, local_ctx);
    var p2 = [posx+Math.tan(angle_right)*snow_height, posy+snow_height];
-   distorted_lineto(p1, p2, local_ctx);
-   distorted_lineto(p2, [posx, posy], local_ctx);
+   distorted_lineto(p1, p2, distortion_factor, local_ctx);
+   distorted_lineto(p2, [posx, posy], distortion_factor, local_ctx);
    local_ctx.fill();
 }
 
@@ -426,7 +429,7 @@ sun_dir = [Math.cos(sun_angle), Math.sin(sun_angle)];
 // sun_dir = [0, -1]; // sun at the top
 
 //use a single global noise function for distortion
-var noise_values_distortion = improved_perlin_noise_recurs(size_canvas[0], size_canvas[1], 10, 1);
+var noise_values_distortion = improved_perlin_noise_recurs(size_canvas[0], size_canvas[1], 6, 1);
 
 //sky
 ctx.strokeStyle = "#50A0FF"; //light blue
@@ -476,23 +479,23 @@ for (var i = 0; i < max_mountains; i++) {
    context_layer.fillStyle = 'rgba(0,0,0,0)'; //maxe context transparent (create a layer)
    context_layer.fillRect(0,0,size_canvas[0], size_canvas[1]);
 
-   var farthness = 1-(i/max_mountains); //how far away a moutain is
+   var distance = 1-(i/max_mountains); //how far away a moutain is
    var pos_x = 1600*Math.random();
 
    //angle of mountains is narrower the farther away it is
-   var max_angle = -3.1415/2.2+farthness*3.1415/4.8
+   var max_angle = -3.1415/2.2+distance*3.1415/4.8
    var ridge_random = Math.random();
    var ridge_angle = -max_angle*(1-ridge_random)+max_angle*ridge_random
 
    //fake perspective, draw more mountains far away than near
-   //if farthness is [0, 1] then pow(farthness, 1/8) will have more values >0.75 than <0.75
-   var pos_y = 700-400*Math.pow(farthness, 1/8);
+   //if distance is [0, 1] then pow(distance, 1/8) will have more values >0.75 than <0.75
+   var pos_y = 700-400*Math.pow(distance, 1/8);
    //draw mountain in a layer
-   draw_mountain(pos_x, pos_y, max_angle, -max_angle, ridge_angle, (farthness+0.75)*100, (1+0.75)*100, sun_dir, context_layer);
+   draw_mountain(pos_x, pos_y, max_angle, -max_angle, ridge_angle, (distance+0.75)*100, (1+0.75)*100, sun_dir, distance, context_layer);
 
    // var canvas_layer_distorted = distort_image(context_layer, size_canvas)
 
-   // ctx.filter = 'blur('+(farthness)+'px)'; //give a depth of field (not that great)
+   // ctx.filter = 'blur('+(distance)+'px)'; //give a depth of field (not that great)
    ctx.drawImage(canvas_layer, 0, 0);
    // ctx.filter = 'blur('+(0)+'px)';
 }
@@ -522,10 +525,10 @@ for (var i = 0; i < max_trees; i++) {
    context_layer.fillStyle = 'rgba(0,0,0,0)'; //maxe context transparent (create a layer)
    context_layer.fillRect(0,0,size_canvas[0], size_canvas[1]);
 
-   var farthness = 1-(i/max_trees);
+   var distance = 1-(i/max_trees);
    var pos_x = 1600*Math.random();
-   var pos_y = 900-180*Math.pow(farthness, 1/2)*2;
-   var tree_size = (1-farthness)*60+20;
+   var pos_y = 900-180*Math.pow(distance, 1/2)*2;
+   var tree_size = (1-distance)*60+20;
    draw_tree(pos_x, pos_y, 3.1415, 0, 4, tree_size, sun_dir, context_layer);
 
    ctx.drawImage(canvas_layer, 0, 0);
@@ -557,7 +560,7 @@ for (var i = 0; i < max_trees; i++) {
 
    var width = 100
    var height = 25
-   // draw_lake(810, 800, width, height, context_layer, ctx);
+   // draw_lake(Math.random()*(size_canvas[1]-width), 875, width, height, context_layer, ctx);
 
    ctx.drawImage(canvas_layer, 0, 0);
 }
